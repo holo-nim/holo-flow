@@ -15,7 +15,7 @@ type HoloReader* = object
 proc initHoloReader*(doLineColumn = holoflowLineColumn): HoloReader {.inline.} =
   result = HoloReader(doLineColumn: doLineColumn)
 
-template buffer*(writer: HoloWriter): string = writer.artery.buffer
+template buffer*(reader: HoloReader): string = reader.vein.buffer
 
 proc startRead*(reader: var HoloReader, vein: Vein) {.inline.} =
   reader.vein = vein
