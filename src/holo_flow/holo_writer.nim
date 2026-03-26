@@ -51,6 +51,13 @@ proc startWrite*(writer: var HoloWriter, stream: Stream, bufferCapacity = 16) {.
     result = x.len
   writer.startWrite(consumer, bufferCapacity)
 
+when declared(File):
+  proc startWrite*(writer: var HoloWriter, file: File, bufferCapacity = 16) {.inline.} =
+    ## `file` has to last as long as the writer
+    let consumer = proc (x: openArray[char]): int =
+      result = file.writeChars(x, 0, x.len)
+    writer.startWrite(consumer, bufferCapacity)
+
 proc addToBuffer*(writer: var HoloWriter, c: char) {.inline.} =
   let moved = smartResizeAdd(writer.buffer, c, writer.freeBefore)
   if moved:

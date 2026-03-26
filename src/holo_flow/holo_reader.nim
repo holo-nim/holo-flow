@@ -44,6 +44,16 @@ proc startRead*(reader: var HoloReader, stream: Stream, loadAmount = 16, bufferC
     readStr(stream, loadAmount)
   reader.startRead(loader, bufferCapacity)
 
+when declared(File):
+  proc startRead*(reader: var HoloReader, file: File, loadAmount = 16, bufferCapacity = 32) {.inline.} =
+    ## `file` has to last as long as the reader
+    var buf = newString(loadAmount) # save allocations by capturing this in the loader, array would need constant load amount
+    let loader = proc (): string =
+      let n = readChars(file, buf)
+      buf.setLen(n)
+      result = buf
+    reader.startRead(loader, bufferCapacity)
+
 proc loadBufferOne*(reader: var HoloReader) {.inline.} =
   if not reader.bufferLoader.isNil:
     let ex = reader.bufferLoader()
