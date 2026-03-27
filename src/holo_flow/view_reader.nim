@@ -8,34 +8,68 @@ const experimentalViewsAvailable = compiles do:
 const holoFlowViewReaderUseViews* {.booldefine.} = experimentalViewsAvailable
 
 when defined(js):
+  type BufferView* = string
   type LoadReaderView* = ref LoadReader
 elif holoFlowViewReaderUseViews:
+  type BufferView* = cstring
   type LoadReaderView* = var LoadReader
 else:
+  type BufferView* = cstring
   type LoadReaderView* = ptr LoadReader
 
 type
   ViewReader* = object
     ## view type over the `LoadReader` type,
     ## to reduce pointer dereferences
-    # XXX option to use normal string on js to force utf 8
-    bufferView*: cstring
-    bufferViewLen*: int
+    bufferView*: BufferView
+    when BufferView is cstring:
+      bufferViewLen*: int
     readerPtr*: LoadReaderView
 
 when defined(js):
+  template jsRawSet(a, b) =
+    {.emit: [a, " = ", b, ";"].}
+
+  template bufferViewLen*(reader: ViewReader): int =
+    reader.bufferView.len
+  template `buffer=`*(reader: ViewReader, s: string) =
+    jsRawSet(reader.bufferView, s)
+  template `buffer=`*(reader: ViewReader, s: typeof(nil)) =
+    jsRawSet(reader.bufferView, "null")
+  
+  proc cannotViewBuffer*(reader: ViewReader): bool {.inline.} =
+    {.emit: [result, " = ", reader.bufferView, " === null;"].}
+
   type AbsorbedState = LoadReader
   template state*(reader: ViewReader): LoadReader =
     reader.readerPtr[]
   template `state=`*(reader: ViewReader, s: AbsorbedState) =
-    reader.readerPtr = cast[ReaderState](s)
+    jsRawSet(reader.readerPtr, s)
 elif LoadReaderView is ptr:
+  template `buffer=`*(reader: ViewReader, s: string) =
+    reader.bufferView = cstring(s)
+    reader.bufferViewLen = s.len
+  template `buffer=`*(reader: ViewReader, s: typeof(nil)) =
+    reader.bufferView = nil
+
+  proc cannotViewBuffer*(reader: ViewReader): bool {.inline.} =
+    result = reader.bufferView.isNil
+
   type AbsorbedState = var LoadReader
   template state*(reader: ViewReader): var LoadReader =
     reader.readerPtr[]
   template `state=`*(reader: ViewReader, s: AbsorbedState) =
     reader.readerPtr = addr s
 elif holoFlowViewReaderUseViews:
+  template `buffer=`*(reader: ViewReader, s: string) =
+    reader.bufferView = cstring(s)
+    reader.bufferViewLen = s.len
+  template `buffer=`*(reader: ViewReader, s: typeof(nil)) =
+    reader.bufferView = nil
+
+  proc cannotViewBuffer*(reader: ViewReader): bool {.inline.} =
+    result = reader.bufferView.isNil
+
   type AbsorbedState = var LoadReader
   template state*(reader: ViewReader): var LoadReader =
     reader.readerPtr
@@ -52,54 +86,53 @@ proc initViewReader*(original: AbsorbedState): ViewReader {.inline.} =
 
 proc startRead*(reader: var ViewReader, str: sink string) {.inline.} =
   reader.state.startRead(str)
-  reader.bufferView = cstring(reader.state.currentBuffer)
-  reader.bufferViewLen = reader.state.currentBuffer.len
+  reader.buffer = reader.state.currentBuffer
   inc reader.state.load.bufferLocks
 
 proc startRead*(reader: var ViewReader, loader: BufferLoader, bufferCapacity = 32) {.inline.} =
   reader.state.startRead(loader, bufferCapacity)
-  reader.bufferView = nil
+  reader.buffer = nil
 
 proc startRead*(reader: var ViewReader, stream: Stream, loadAmount = 16, bufferCapacity = 32) {.inline.} =
   reader.startRead(stream, loadAmount, bufferCapacity)
-  reader.bufferView = nil
+  reader.buffer = nil
 
 when declared(File):
   proc startRead*(reader: var ViewReader, file: File, loadAmount = 16, bufferCapacity = 32) {.inline.} =
     reader.startRead(file, loadAmount, bufferCapacity)
-    reader.bufferView = nil
+    reader.buffer = nil
 
 proc loadBufferOne*(reader: ViewReader) {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     reader.state.callLoader()
 
 proc loadBufferBy*(reader: ViewReader, n: int) {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     reader.state.callLoaderBy(n)
 
 proc peek*(reader: ViewReader, c: var char): bool {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.peek(c)
   else:
     let nextPos = reader.state.bufferPos + 1
     doPeek(reader.bufferView, reader.bufferViewLen, nextPos, c, result)
 
 proc unsafePeek*(reader: ViewReader): char {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.unsafePeek()
   else:
     # this is extra unsafe
     result = reader.bufferView[reader.state.bufferPos + 1]
 
 proc peek*(reader: ViewReader, c: var char, offset: int): bool {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.peek(c, offset)
   else:
     let nextPos = reader.state.bufferPos + 1 + offset
     doPeek(reader.bufferView, reader.bufferViewLen, nextPos, c, result)
 
 proc unsafePeek*(reader: ViewReader, offset: int): char {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.unsafePeek(offset)
   else:
     # this is extra unsafe
@@ -107,7 +140,7 @@ proc unsafePeek*(reader: ViewReader, offset: int): char {.inline.} =
 
 proc peekCount*(reader: ViewReader, rune: var Rune): int {.inline.} =
   ## returns rune size if rune is peeked
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.peekCount(rune)
   else:
     let bpos = reader.state.bufferPos
@@ -136,7 +169,7 @@ proc peek*(reader: ViewReader, rune: var Rune): bool {.inline.} =
   result = peekCount(reader, rune) != 0
 
 template peekStrImpl(reader: ViewReader, cs) =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.peek(cs)
   else:
     result = false
@@ -173,11 +206,11 @@ proc hasNext*(reader: ViewReader, offset: int): bool {.inline.} =
   result = peek(reader, dummy, offset)
 
 proc lockBuffer*(reader: ViewReader) {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     reader.state.lockBuffer()
 
 proc unlockBuffer*(reader: ViewReader) {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     reader.state.unlockBuffer()
 
 proc unsafeNext*(reader: ViewReader) {.inline.} =
@@ -222,7 +255,7 @@ proc nextMatch*(reader: ViewReader, c: char): bool {.inline.} =
     reader.unsafeNext()
 
 proc peekMatch*(reader: ViewReader, c: char, offset: int): bool {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.peekMatch(c, offset)
   else:
     let bpos = reader.state.bufferPos
@@ -265,7 +298,7 @@ proc nextMatch*(reader: ViewReader, cs: set[char]): bool {.inline.} =
   result = reader.nextMatch(cs, dummy)
 
 proc peekMatch*(reader: ViewReader, cs: set[char], offset: int, c: var char): bool {.inline.} =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.peekMatch(cs, offset, c)
   else:
     let bpos = reader.state.bufferPos
@@ -283,7 +316,7 @@ proc peekMatch*(reader: ViewReader, cs: set[char], offset: int): bool {.inline.}
   result = reader.peekMatch(cs, offset, dummy)
 
 template peekMatchStrImpl(reader: ViewReader, str) =
-  if reader.bufferView.isNil:
+  if reader.cannotViewBuffer:
     result = reader.state.peekMatch(str)
   else:
     let bpos = reader.state.bufferPos

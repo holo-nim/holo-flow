@@ -1,7 +1,7 @@
 import std/strbasics
 
 when not declared(capacity):
-  template capacity(s: string): int = high(int)
+  template capacity(s: string): int {.used.} = high(int)
 
 {.push checks: off, stacktrace: off.}
 

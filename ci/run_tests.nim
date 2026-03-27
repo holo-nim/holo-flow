@@ -9,4 +9,5 @@ when not declared(runTests):
 # run from project root
 runTests(
   backends = {c, js, nims},
+  optionCombos = @["", "--experimental:views"]
 )
