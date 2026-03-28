@@ -35,8 +35,10 @@ when defined(js):
   type State = ReadState
   template state*(reader: ViewReader): State =
     reader.statePtr[]
-  template `state=`*(reader: ViewReader, s: State) =
+  template `stateSource=`*(reader: ViewReader, s: State) =
     jsRawSet(reader.statePtr, s)
+  template `state=`*(reader: ViewReader, s: State) =
+    reader.statePtr[] = s
 else:
   template `buffer=`*(reader: ViewReader, s: string) =
     reader.bufferView = cstring(s)
