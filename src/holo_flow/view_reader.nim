@@ -220,11 +220,16 @@ proc next*(reader: ViewReader): bool {.inline.} =
   var dummy: char
   result = next(reader, dummy)
 
-iterator peekNext*(reader: ViewReader): char =
+iterator chars*(reader: ViewReader): char =
   var c: char
   while reader.peek(c):
     yield c
     reader.unsafeNext()
+
+iterator peekNext*(reader: ViewReader): char {.deprecated.} =
+  ## deprecated alias for `chars`
+  for c in chars(reader):
+    yield c
 
 proc peekMatch*(reader: ViewReader, c: char): bool {.inline.} =
   var c2: char

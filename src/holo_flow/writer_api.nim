@@ -3,36 +3,39 @@
 
 import std/unicode # just to expose API otherwise not used
 
-when not declared(WriterType):
+when defined(nimdoc):
+  type WriterType = object
+elif not declared(WriterType):
   {.fatal: "need to include with `WriterType` defined".}
 
 when false:
   import std/streams
 
-  proc startWrite*(writer: WriterType, bufferCapacity = 16)
+  proc startWrite*(writer: WriterType, bufferCapacity = 16) = discard
 
-  proc startWrite*(writer: WriterType, consumer: BufferConsumer, bufferCapacity = 16)
+  proc startWrite*(writer: WriterType, consumer: BufferConsumer, bufferCapacity = 16) = discard
 
-  proc startWrite*(writer: WriterType, stream: Stream, bufferCapacity = 16)
+  proc startWrite*(writer: WriterType, stream: Stream, bufferCapacity = 16) = discard
 
   when declared(File):
-    proc startWrite*(writer: WriterType, file: File, bufferCapacity = 16)
+    proc startWrite*(writer: WriterType, file: File, bufferCapacity = 16) = discard
 
-# these are exposed but the type does not have to be `string`, at most `openArray[char]`:
-template currentBuffer*(writer: WriterType): string
-template bufferStart*(writer: WriterType): int
+template currentBuffer*(writer: WriterType): string =
+  ## the type does not have to be `string`, at most it has to behave like `openArray[char]`
+  discard
+template bufferStart*(writer: WriterType): int = discard
 
-proc lockFlush*(writer: WriterType)
-proc unlockFlush*(writer: WriterType)
+proc lockFlush*(writer: WriterType) = discard
+proc unlockFlush*(writer: WriterType) = discard
 
-proc addToBuffer*(writer: WriterType, c: char)
-proc addToBuffer*(writer: WriterType, c: Rune)
-proc addToBuffer*(writer: WriterType, s: string)
-proc addToBuffer*(writer: WriterType, s: openArray[char])
+proc addToBuffer*(writer: WriterType, c: char) = discard
+proc addToBuffer*(writer: WriterType, c: Rune) = discard
+proc addToBuffer*(writer: WriterType, s: string) = discard
+proc addToBuffer*(writer: WriterType, s: openArray[char]) = discard
 
-proc write*(writer: WriterType, c: char)
-proc write*(writer: WriterType, c: Rune)
-proc write*(writer: WriterType, s: string)
-proc write*(writer: WriterType, s: openArray[char])
+proc write*(writer: WriterType, c: char) = discard
+proc write*(writer: WriterType, c: Rune) = discard
+proc write*(writer: WriterType, s: string) = discard
+proc write*(writer: WriterType, s: openArray[char]) = discard
 
-proc finishWrite*(writer: WriterType): string
+proc finishWrite*(writer: WriterType): string = discard

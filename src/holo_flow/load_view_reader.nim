@@ -237,11 +237,16 @@ proc next*(reader: LoadViewReader): bool {.inline.} =
   var dummy: char
   result = next(reader, dummy)
 
-iterator peekNext*(reader: LoadViewReader): char =
+iterator chars*(reader: LoadViewReader): char =
   var c: char
   while reader.peek(c):
     yield c
     reader.unsafeNext()
+
+iterator peekNext*(reader: LoadViewReader): char {.deprecated.} =
+  ## deprecated alias for `chars`
+  for c in chars(reader):
+    yield c
 
 proc peekMatch*(reader: LoadViewReader, c: char): bool {.inline.} =
   var c2: char
