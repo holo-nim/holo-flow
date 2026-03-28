@@ -4,7 +4,10 @@ const holoReaderLineColumn* {.booldefine.} = true
   ## enables/disables line column tracking by default for tracked state, has very little impact on performance
 
 const holoReaderPeekStrCopyMem* {.booldefine.} = false
-  ## possible minor optimization, seems slightly slower in practice 
+  ## possible minor optimization, can be faster on reduced instruction sets
+
+const holoReaderMatchStrEqualMem* {.booldefine.} = false
+  ## possible minor optimization, can be faster on reduced instruction sets
 
 const experimentalViewsAvailable = compiles do:
   var x: int

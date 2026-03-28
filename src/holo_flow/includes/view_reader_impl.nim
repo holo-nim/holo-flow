@@ -234,13 +234,24 @@ proc peekMatch*(reader: ViewReaderType, cs: set[char], offset: int): bool {.inli
   var dummy: char
   result = reader.peekMatch(cs, offset, dummy)
 
-template peekMatchStrImpl(reader: ViewReaderType, str) =
+template peekMatchStrImpl(reader: ViewReaderType, str: untyped, isStatic: bool = false) =
   let bpos = reader.bufferPos
   if bpos + str.len < reader.bufferView.len:
-    for i in 0 ..< str.len:
-      if str[i] != reader.bufferView[bpos + 1 + i]:
-        return false
-    result = true
+    when nimvm:
+      for i in 0 ..< str.len:
+        if str[i] != reader.bufferView[bpos + 1 + i]:
+          return false
+      result = true
+    else:
+      when not holoReaderMatchStrEqualMem or isStatic or defined(js) or defined(nimscript):
+        for i in 0 ..< str.len:
+          if str[i] != reader.bufferView[bpos + 1 + i]:
+            return false
+        result = true
+      else:
+        when isStatic:
+          let str = str
+        result = equalMem(unsafeAddr str[0], addr reader.bufferView[bpos + 1], str.len)
   else:
     result = false
 
@@ -252,7 +263,7 @@ proc peekMatch*[I](reader: ViewReaderType, str: array[I, char]): bool {.inline.}
 
 proc peekMatch*(reader: ViewReaderType, str: static string): bool {.inline.} =
   # maybe make a const array
-  peekMatchStrImpl(reader, str)
+  peekMatchStrImpl(reader, str, isStatic = true)
 
 proc nextMatch*(reader: ViewReaderType, str: openArray[char]): bool {.inline.} =
   result = peekMatch(reader, str)

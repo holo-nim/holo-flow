@@ -271,14 +271,25 @@ proc peekMatch*(reader: var LoadReaderType, cs: set[char], offset: int): bool {.
   var dummy: char
   result = peekMatch(reader, cs, offset, dummy)
 
-template peekMatchStrImpl(reader: var LoadReaderType, str) =
+template peekMatchStrImpl(reader: var LoadReaderType, str: untyped, isStatic: bool = false) =
   prepareBuffer(reader, str.len)
   let bpos = reader.state.pos
   if bpos + str.len < reader.currentBuffer.len:
-    for i in 0 ..< str.len:
-      if str[i] != reader.currentBuffer[bpos + 1 + i]:
-        return false
-    result = true
+    when nimvm:
+      for i in 0 ..< str.len:
+        if str[i] != reader.currentBuffer[bpos + 1 + i]:
+          return false
+      result = true
+    else:
+      when not holoReaderMatchStrEqualMem or isStatic or defined(js) or defined(nimscript):
+        for i in 0 ..< str.len:
+          if str[i] != reader.currentBuffer[bpos + 1 + i]:
+            return false
+        result = true
+      else:
+        when isStatic:
+          let str = str
+        result = equalMem(unsafeAddr str[0], addr reader.currentBuffer[bpos + 1], str.len)
   else:
     result = false
 
@@ -290,7 +301,7 @@ proc peekMatch*[I](reader: var LoadReaderType, str: array[I, char]): bool {.inli
 
 proc peekMatch*(reader: var LoadReaderType, str: static string): bool {.inline.} =
   # maybe make a const array
-  peekMatchStrImpl(reader, str)
+  peekMatchStrImpl(reader, str, isStatic = true)
 
 proc nextMatch*(reader: var LoadReaderType, str: openArray[char]): bool {.inline.} =
   result = peekMatch(reader, str)
