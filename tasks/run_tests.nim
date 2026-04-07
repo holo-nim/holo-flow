@@ -11,3 +11,8 @@ runTests(
   backends = {c, js, nims},
   optionCombos = @["", "--experimental:views"]
 )
+runTests(
+  "tests/async",
+  backends = {c, js},
+  optionCombos = @["", "--experimental:views"]
+)

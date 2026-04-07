@@ -4,8 +4,9 @@ when not declared(ViewReaderType):
   {.fatal: "this is an include in the view_reader module".}
 
 when defined(js):
-  template jsRawSet(a, b) =
-    {.emit: [a, " = ", b, ";"].}
+  when not declared(jsRawSet):
+    template jsRawSet(a, b) =
+      {.emit: [a, " = ", b, ";"].}
 
   template `buffer=`*(reader: ViewReaderType, s: string) =
     jsRawSet(reader.bufferView, s)

@@ -125,14 +125,14 @@ proc endFlush*(buffer: var AsyncFlushBuffer) {.async.} =
   ## signals to consumer the end of flushing, leaves remaining buffer
   # is there a way to inline this
   if not buffer.consumer.isNil:
-    await callConsumerEnd(buffer)
+    callConsumerEnd(buffer)
 
 proc callConsumerFinish*(buffer: var AsyncFlushBuffer) {.async.} =
   ## for internal use, only called if buffer consumer is known not to be nil
   # is there a way to inline this
   await buffer.callConsumerFull()
   if not buffer.consumer.isNil:
-    await callConsumerEnd(buffer)
+    callConsumerEnd(buffer)
 
 proc finishFlush*(buffer: var AsyncFlushBuffer) {.async.} =
   ## fully flushes buffer and signals end of flushing to consumer if consumer still exists

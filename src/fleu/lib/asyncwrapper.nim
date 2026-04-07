@@ -1,8 +1,8 @@
 const asyncBackend {.strdefine.} = ""
 
 when defined(js):
-  import std/[asyncjs, asyncstreams]
-  export asyncjs, asyncstreams
+  import std/asyncjs
+  export asyncjs
 elif asyncBackend == "" or asyncBackend == "asyncdispatch":
   import std/[asyncdispatch, asyncstreams, asyncfile]
   export asyncdispatch, asyncstreams, asyncfile
