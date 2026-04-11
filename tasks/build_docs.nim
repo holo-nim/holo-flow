@@ -12,7 +12,7 @@ import std/[os, strutils]
 
 let srcDir = "src"
 var files: seq[FilePath] = @[]
-for dirs in [srcDir]: # ignore includes dir
+for dirs in [srcDir, srcDir / "fleu"]: # ignore includes dir
   for kind, f in walkDir(srcDir):
     if kind == pcFile and f.endsWith(".nim"):
       files.add f
